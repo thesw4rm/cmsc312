@@ -78,7 +78,7 @@ char **average_1(input_data *input, CLIENT *client)
   int g;
   char temp[10];
   for(g = 1; g < input->input_data.input_data_len; g++){
-      snprintf(temp, 10, "%f", dp[g]);
+      snprintf(temp, 10, "%F", dp[g]);
       int len = strlen(temp);
       memcpy(&nums[ind], temp, len);
       ind += len;
