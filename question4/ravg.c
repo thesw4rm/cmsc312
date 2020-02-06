@@ -20,16 +20,15 @@ void averageprog_1( char* host, int argc, char *argv[] )
    dp = average_1_arg.input_data.input_data_val;
    
    /* set number of items */
-   average_1_arg.input_data.input_data_len = argc - 2;
+   average_1_arg.input_data.input_data_len = argc - 3;
 
-   for( i = 1; i <= (argc - 2); i++ )
+   for( i = 1; i <= (argc - 3); i++ )
    {
 	/* str to d ASCII string to floating point nubmer */
- 	f = strtod( argv[i+1], &endptr);
+ 	f = strtod( argv[i+2], &endptr);
 
         printf("value   = %e\n", f);
-        *dp = f;
-        dp++;
+        dp[i-1] = f;
    }
 
 
@@ -79,7 +78,7 @@ void averageprog_1( char* host, int argc, char *argv[] )
 
    clnt_destroy( clnt );
 
-   printf( "average = %e\n",*result_1 );
+   printf( "median = %e\n",*result_1 );
 }
 
 

@@ -4,6 +4,37 @@
 #include <string.h>
 /* run locally on 'server' called by a remote client. */
 static double sum_avg;
+static double median;
+void sw(double *x, double *y){
+  double t = *x;
+  *x = *y;
+  *y = t;
+}
+
+int part(double *arr, int s, int e){
+  // set pivot as last element
+  int piv = arr[e];
+  int i = s - 1; // Get smaller element
+  int j;
+  for(j = s; j <= e; j++){
+    if(arr[j] < piv){
+      ++i;
+      sw(&arr[i], &arr[j]);
+    }
+  }
+  sw(&arr[i+1], &arr[e]);
+  return i+1; // Because j runs through upper index elements and i runs through lower index elements, "i" will at this point be the middle point of the array
+}
+
+double *qs(double *arr, int s, int e){
+  if(s < e){
+    int p = part(arr, s, e);
+    qs(arr, s, p - 1);
+    qs(arr, p+1, e);
+  }
+}
+
+
 
 /* 
  * routine notice the _1 the version number 
@@ -18,20 +49,26 @@ double * average_1(input_data *input, CLIENT *client)
   double *dp = input->input_data.input_data_val;
 
   u_int i;
-  sum_avg = 0;
+  // sum_avg = 0;
 
-  /* iterate until end of number of times (data_len) */
-  for( i = 1; i <= input->input_data.input_data_len; i++ )
-    {
-    sum_avg = sum_avg + *dp;  /* add what ptrs points  to ( '*' gets content ) */
-    dp++;
-    }
+  // /* iterate until end of number of times (data_len) */
+  // for( i = 1; i <= input->input_data.input_data_len; i++ )
+  //   {
+  //   sum_avg = sum_avg + dp[i];  /* add what ptrs points  to ( '*' gets content ) */
+  
+  //   }
 
-  sum_avg = sum_avg / input->input_data.input_data_len;
+  // sum_avg = sum_avg / input->input_data.input_data_len;
+  printf("%i\n", input->input_data.input_data_len);
+  qs(dp, 0, input->input_data.input_data_len - 1);
+  if(input->input_data.input_data_len % 2 == 1){
+    median = dp[input->input_data.input_data_len / 2];
+  }
+  else{
+    median = (dp[input->input_data.input_data_len/2] + dp[input->input_data.input_data_len/2 -1]) / 2;
+  }
 
-
-
-  return( &sum_avg );
+  return( &median );
 }
 
 
