@@ -15,22 +15,22 @@
 int main(){
     
 
-    int shm_str = shmget(SHM_STR_KEY, sizeof(mem_string), 0);
-    int shm_int = shmget(SHM_INT_KEY, sizeof(mem_int), 0);
-
-    mem_string *str = shmat(shm_str, NULL, 0);
+     int shm_str = shmget(SHM_STR_KEY, sizeof(mem_string), 0);
+    
     printf("WAITING FOR PROCESS A TO CREATE MEMORY\n");
-    // while(str == -1){
-    //     if(errno = EINVAL){
-    //         // Wait for memory to be created
-    //     }
-    //     else{
-    //         perror("shmat");
-    //         exit(-1);
-    //     }
-    //     str = shmat(SHM_STR_KEY, NULL, 0);
-    // }
+    while(shm_str == -1){
+        if(errno = EINVAL){
+            // Wait for memory to be created
+        }
+        else{
+            perror("shmat");
+            exit(-1);
+        }
+        shm_str = shmget(SHM_STR_KEY, sizeof(mem_string), 0);
+    }
     printf("MEMORY CREATED BY PROGRAM A\n");
+    int shm_int = shmget(SHM_INT_KEY, sizeof(mem_int), 0);
+    mem_string *str = shmat(shm_str, NULL, 0);
     mem_int *i = shmat(shm_int, NULL, 0);
     printf("SHMAT DONE\n");
     i->prog_b_done = 0;
