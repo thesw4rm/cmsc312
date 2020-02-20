@@ -1,0 +1,6 @@
+1) Killing kirk closes the message queue, thus resulting in spock stopping execution as well.
+Killing spock will let kirk keep adding to the message queue until spock is started again. When spock starts again it reads in input. clears queue, and prints what was in the queue
+
+2) Running 2 kirk programs will let the user keep adding data to the shared message queue.
+
+3) :x:Running 2 spocks will cause the programs to take turns reading in  and printing from the message queue.

@@ -6,8 +6,8 @@
 #include "part1.h"
 
 
-#define SHM_STR_KEY 4156
-#define SHM_INT_KEY 4157
+#define SHM_STR_KEY 2113
+#define SHM_INT_KEY 2114
 
 int main(){
     int shm_str = shmget(SHM_STR_KEY, sizeof(mem_string), IPC_CREAT | 0777);
@@ -26,8 +26,16 @@ int main(){
         }
     }
 
+   
     printf("GOODBYE!");
+  shmdt(&str);
+    shmdt(&i);
+    if(shmctl(str, IPC_RMID, NULL) < 0)
+        perror("shmctl");
+    if(shmctl(i, IPC_RMID, NULL) < 0)
+        perror("shmctl");
 
+  
 
 
 

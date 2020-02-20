@@ -1,4 +1,4 @@
-#include <rpc/rpc.h>
+                                                                                      #include <rpc/rpc.h>
 #include "avg.h"
 #include <stdio.h>
 #include <string.h>
@@ -13,7 +13,7 @@ void sw(double *x, double *y){
 
 int part(double *arr, int s, int e){
   // set pivot as last element
-  int piv = arr[e];
+int piv = arr[e];
   int i = s - 1; // Get smaller element
   int j;
   for(j = s; j <= e; j++){

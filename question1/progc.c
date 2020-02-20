@@ -8,8 +8,8 @@
 #include "part1.h"
 
 
-#define SHM_STR_KEY 4156
-#define SHM_INT_KEY 4157
+#define SHM_STR_KEY 2113
+#define SHM_INT_KEY 2114
 
 int main(){
  
@@ -17,11 +17,11 @@ int main(){
     
     printf("WAITING FOR PROCESS A TO CREATE MEMORY\n");
     while(shm_str == -1){
-        if(errno = EINVAL){
+        if(errno == ENOENT){
             // Wait for memory to be created
         }
         else{
-            perror("shmat");
+            perror("shmget");
             exit(-1);
         }
         shm_str = shmget(SHM_STR_KEY, sizeof(mem_string), 0);

@@ -121,6 +121,9 @@ int main()
     else if(pidB > 0 && pidC > 0) {
         wait(NULL);
         printf("GOODBYE\n");
+        shmctl(SHM_STR_KEY, IPC_RMID, 0);
+        shmctl(SHM_INT_KEY, IPC_RMID, 0);
+
     }
 }
 

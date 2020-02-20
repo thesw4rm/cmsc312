@@ -40,7 +40,7 @@ main (int argc, char *argv[])
 {
 	char *host;
 
-	if (argc < 2) {
+	if (argc < 2) { zzz
 		printf ("usage: %s server_host\n", argv[0]);
 		exit (1);
 	}
