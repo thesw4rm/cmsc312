@@ -90,7 +90,6 @@ void user(int tn, int seed) { //(void *thread_n) {
     sem_post(&mdata->pqmut[noff]); // Unlock the slot for use by printer
     csema_post(&mdata->qempty);
     printf("User %d created job of %d bytes\n", tn, bytes);
-    // nanosleep((const struct timespec[]) {{0, (rand() % 5000000000)}}, NULL);
   }
   printf("USER PROC %u IS FINISHED\n", tn);
   sem_wait(&mdata->qmut);
@@ -118,8 +117,6 @@ void *print(void *thread_n) {
   while (1) {
 
     csema_wait(&mdata->qempty);
-    /*if (!(mdata->user_procs_left > 0 || mdata->qhead != NULL))
-        break;*/
     sem_wait(&mdata->qmut);
     if (mdata->head == NULL && mdata->user_procs_left == 0) {
       csema_post(&mdata->pprocs_comp);
@@ -140,8 +137,6 @@ void *print(void *thread_n) {
     sem_post(&mdata->qmut);
 
     csema_post(&mdata->qfull);
-    // printf("%lu\n", wait);
-    // usleep(500000);
     usleep(wait);
     clock_t cur_time;
     cur_time = clock();
