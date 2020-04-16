@@ -1,0 +1,67 @@
+2) SJF gives optimal average turnaround times because it avoids the problem with FCFS where if a slower process is handled before a faster one, it increases the average turnaround time more than if slower processes are handled after faster ones. 
+
+3) Workloads will run in same average turnaround time if they are received in order of shortest job first or if all processes take approximately the same amount of time to run.
+
+4) Assume n number of processes have the same execution time. In this case, they can all run at SJF efficiency if each process is given 1/n of CPU time. 
+
+5) Response time increases directly proportionally to job length. 
+
+6)
+
+7) Efficiency can be defined as time spent on operating system operations or execution and response time of userspace programs. In the latter case, preemptive schedulers are more efficient because they optimally sort jobs by priority and importance. In the former case, non-preemptive schedulers will be more efficient because they do not have to do context switches as frequently, resulting in less overhead. 
+
+8) Priority inversion problem occurs when a lower priority process executes before a higher priority process by preempting it. Because the high priority process is now unable to access resources, it may run into problems. Round robin scheduling avoids this issue by not using priorities at all, and thus getting rid of the priority inversion problem. 
+
+9) Peterson's solution solves the mutual exclusion problem by allowing multiple resources access to be handled via setting flags over IPC, where processes take turns accessing it. It works with preemption because it stops one process and waits for the current one to finish. This method may fail in a nonpreemptive approach because two processes may end up being in a wait state forever, waiting for the other one to finish. 
+
+10) 
+        FCFS:
+
+                P1                P2 P3    P4         P5
+                0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17
+        SJF:
+                P2 P3    P4          P5               P6                 
+                0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17
+
+
+        Non-preemptive priority
+                
+                P2 P5             P1                  P4          P3 
+                0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17
+
+        RR with Quantum = 1:
+                
+                P1 P2 P3 P4 P5 P1 P3 P4 P5 P1 P4  P5  P1  P5  P1  P5  P1  P1
+                0  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17
+
+Turnaround time
+
+        FCFS    SJF     NPP     RR
+P1      6       17      12      17
+P2      7       1       1       2
+P3      9       3       17      7
+P4      12      6       15      11
+P5      17      11      6       16
+Avg     10.2    7.6     10.2    10.6
+
+
+
+Waiting time:
+
+
+        FCFS    SJF     NPP     RR
+P1      0       11      6       11
+P2      6       0       0       1
+P3      7       1       15      5
+P4      9       3       12      8
+P5      12      6       1       11
+Avg     6.8     4.2     6.8     7.2
+
+
+SJF has the lowest average waiting time
+
+
+11) T(4) = at_n + (1-a) * at_(n-1) + (1-a)^2 * at_(n-2) + (1-a)^3 * t_(n-3)
+         = 22.5ms
+
+12) Multi-level feedback schedulers use a foreground queue and a background queue. The foreground queue is used for interactive processes and the background queue used for batch proceses. Additionally, the scheduler can have other queues that are dedicated for certain runtimes and process types. The scheduler prioritises and allocates time slots to each process for execution. If a process executes longer than it's time slot, it is moved to a lower priority queue so faster processes can execute first. Due to this prioritisation and delegation of processes, this type of scheduler does approximate SRTF.  
