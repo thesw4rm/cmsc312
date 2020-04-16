@@ -19,10 +19,11 @@
 
 #include "dll.h"
 #include "csema_bad.h"
-
+/* *
+ * Metadata for printer queue
+ * */
 typedef struct {
-    unsigned int log: 1; // Should the program log verbose data or not
-    unsigned int demo: 1; // Should the program do printf statements
+    unsigned int sigint_tripped; // Set to 1 if sigint is received
     unsigned int free_space; // Each bit says that index is free for another print job
     int user_procs_left; // Number of user processes left to execute (set directly to 0 in case of sigint)
     int head; // Offset to get to the first item in print queue
@@ -34,6 +35,7 @@ typedef struct {
 
 } shm_mdata;
 
+
 #define DEFAULT_SHM_SIZE sizeof(shm_mdata)
 #define DEFAULT_PQUEUE_SIZE sizeof(job) * 30
 
@@ -42,31 +44,3 @@ typedef struct {
 
 #endif //A3_CONSTANTS_H
 
-
-/* if (mdata->qtail == NULL) { // Tail should not be NULL unless this is first print job (thread and i are 0)
-//            if ((tn + i) != 0)
-//                printf("qtail was NULL when user %d %d was trying to add a new print job\n", tn, i);
-         if (mdata->qhead == NULL)
-             mdata->qhead = njob;
-         else {
-             mdata->qtail = njob;
-             mdata->qtail->prev = mdata->qhead;
-             mdata->qhead->next = mdata->qtail;
-
-         }
-         //mdata->qtail = njob;
-
-         //printf("%d\n", mdata->qhead->bytes);
-
-     } else {
-         if (mdata->qhead == NULL) {
-             mdata->qhead = njob;
-             mdata->qtail = NULL;
-
-         } else {
-             mdata->qtail->next = njob;
-             njob->prev = mdata->qtail;
-             mdata->qtail = njob;
-         }
-
-     }*/
