@@ -29,7 +29,6 @@ struct print_job *add_job_fcfs(struct print_job *cjob, struct print_job *njob) {
 
     cjob->next = njob;
 
-    //printf("%u %u\n", hoff - cjob->off, cjob->off);
 
     return hoff;
 

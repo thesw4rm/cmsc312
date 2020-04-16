@@ -11,6 +11,10 @@
 #define DEFAULT_PPROCS 10
 #define PRINT_QUEUE_LIMIT 30
 
+#define DEFAULT_SHM_SIZE sizeof(shm_mdata)
+#define DEFAULT_PQUEUE_SIZE sizeof(job) * 30
+
+#define QUEUE_OFFSET sizeof(shm_mdata)
 // Printer format: 1, printer_id, user_id, bytes, start_time, wait_time
 // User format: 0, -1, user_id, bytes, start_time, 0
 
@@ -30,36 +34,5 @@ typedef struct {
 
 } shm_mdata;
 
-#define DEFAULT_SHM_SIZE sizeof(shm_mdata)
-#define DEFAULT_PQUEUE_SIZE sizeof(job) * 30
-
-#define QUEUE_OFFSET sizeof(shm_mdata)
 
 #endif // A3_CONSTANTS_H
-
-/* if (mdata->qtail == NULL) { // Tail should not be NULL unless this is first
-print job (thread and i are 0)
-//            if ((tn + i) != 0)
-//                printf("qtail was NULL when user %d %d was trying to add a new
-print job\n", tn, i); if (mdata->qhead == NULL) mdata->qhead = njob; else {
-             mdata->qtail = njob;
-             mdata->qtail->prev = mdata->qhead;
-             mdata->qhead->next = mdata->qtail;
-
-         }
-         //mdata->qtail = njob;
-
-         //printf("%d\n", mdata->qhead->bytes);
-
-     } else {
-         if (mdata->qhead == NULL) {
-             mdata->qhead = njob;
-             mdata->qtail = NULL;
-
-         } else {
-             mdata->qtail->next = njob;
-             njob->prev = mdata->qtail;
-             mdata->qtail = njob;
-         }
-
-     }*/
