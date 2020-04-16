@@ -71,7 +71,7 @@ void user(int tn, int seed) {//(void *thread_n) {
 //        print_bits(mdata->free_space);
         unsigned int noff = get_next_free_off(md->free_space);
         job *njob = &pqueue[noff];
-        init_fcfs_job(njob, bytes, noff);
+        init_sjf_job(njob, bytes, noff);
 
         njob->start_wait_time = clock();
         njob->thd = tn;
@@ -79,10 +79,10 @@ void user(int tn, int seed) {//(void *thread_n) {
        // printf("ASD: %u\n", tn);
         if (md->head >= 0) {
 //            printf("ASD %u\n", njob->off);
-            add_job_fcfs(&pqueue[md->head], njob);
+            md->head = add_job_sjf(&pqueue[md->head], njob);
 //            printf("ASD\n");
         } else {
-            md->head = add_job_fcfs(NULL, njob)->off;
+            md->head = njob->off;
 //            printf("ASD\n");
 
         }

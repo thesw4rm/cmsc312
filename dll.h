@@ -10,12 +10,12 @@ typedef struct print_job{
    clock_t start_wait_time; // Total time job has been waiting
 
 
-   struct print_job *(*add_job)(struct print_job *, struct print_job *);
+   int (*add_job)(struct print_job *, struct print_job *);
    unsigned int (*rm_job)(struct print_job *);
 } job;
 
-struct print_job *add_job_sjf(struct print_job *, struct print_job *);
-struct print_job *add_job_fcfs(struct print_job *, struct print_job *);
+int add_job_sjf(struct print_job *, struct print_job *);
+int add_job_fcfs(struct print_job *, struct print_job *);
 
 unsigned int rm_job(struct print_job *);
 

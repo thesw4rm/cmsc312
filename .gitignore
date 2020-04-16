@@ -4,3 +4,4 @@ cmake-build-debug/
 .lvimrc
 tags
 session.vim
+build

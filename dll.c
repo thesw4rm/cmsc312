@@ -30,10 +30,10 @@ void init_sjf_job(job *njob, int bytes, unsigned int off) {
  * @param njob - pointer to new job
  */
 
-struct print_job *add_job_fcfs(struct print_job *cjob, struct print_job *njob) {
+int add_job_fcfs(struct print_job *cjob, struct print_job *njob) {
     if(cjob == NULL){ // Adding to empty queue
 //        printf("WAT ITS NULL?\n");
-        return njob;
+        return njob->off;
     }
     int hoff = cjob->off;
 //    printf("\n");
@@ -50,14 +50,14 @@ struct print_job *add_job_fcfs(struct print_job *cjob, struct print_job *njob) {
 
     //printf("%u %u\n", hoff - cjob->off, cjob->off);
 
-    return &cjob[hoff - cjob->off];
+    return hoff;
 
 }
 
-struct print_job *add_job_sjf(struct print_job *cjob, struct print_job *njob) {
+int add_job_sjf(struct print_job *cjob, struct print_job *njob) {
     if(njob->bytes < cjob->bytes){
         njob->next = cjob->off;
-        return njob;
+        return njob->off;
     }
     int hoff = cjob->off;
     while (cjob->bytes <= njob->bytes && cjob->next != -1) {
@@ -66,7 +66,7 @@ struct print_job *add_job_sjf(struct print_job *cjob, struct print_job *njob) {
     njob->next = cjob->next;
 
     cjob->next = njob->off;
-    return &cjob[hoff - cjob->off];
+    return hoff;
 
 }
 
