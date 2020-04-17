@@ -8,7 +8,7 @@ typedef struct print_job {
     int off;  // Offset of current job
     unsigned int thd,
         bytes; // Thread that assigned the job, and the bytes allocated
-    clock_t start_wait_time; // Total time job has been waiting
+    struct timespec start_wait_time; // Total time job has been waiting
 
     int (*add_job)(struct print_job *, struct print_job *);
     unsigned int (*rm_job)(struct print_job *);

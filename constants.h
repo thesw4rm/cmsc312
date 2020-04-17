@@ -12,7 +12,7 @@
 #define PRINT_QUEUE_LIMIT 30
 
 
-
+#define BILLION (double)(1000 * 1000 * 1000)
 
 // Printer format: 1, printer_id, user_id, bytes, start_time, wait_time
 // User format: 0, -1, user_id, bytes, start_time, 0
@@ -23,6 +23,7 @@
  * Metadata for printer queue
  * */
 typedef struct {
+
     unsigned int sigint_tripped; // Set to 1 if sigint is received
     unsigned int free_space; // Each bit says that index is free for another print job
     int user_procs_left; // Number of user processes left to execute (set directly to 0 in case of sigint)

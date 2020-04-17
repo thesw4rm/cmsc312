@@ -1,18 +1,23 @@
 
-#include <sys/types.h>
-#include <sys/wait.h>
-
 #include "constants.h"
 #include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/shm.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 shm_mdata *mdata;
 job *pq;
+
+double
+    avg_exec_time; // Average execution time so far. Used in running calculation
+int jobs_done;     // Total jobs printed so far
+pthread_mutex_t time_info; // Mutex to lock average wait time information
 
 volatile int sigint_tripped; // Becomes 1 if signal interrupt is received.
 pid_t *uprocs;
@@ -83,7 +88,7 @@ void user(int tn, int seed) {
         job *njob = &pqueue[noff];
         init_sjf_job(njob, bytes, noff);
 
-        njob->start_wait_time = clock();
+        clock_gettime(CLOCK_BOOTTIME, &njob->start_wait_time);
         njob->thd = tn;
         njob->off = noff;
         if (md->head >= 0) {
@@ -93,7 +98,12 @@ void user(int tn, int seed) {
         }
 
         md->free_space = set_off_not_free(md->free_space, noff);
-
+        if (i == num_jobs - 1 || sigint_tripped) {
+            md->user_procs_left--;
+            if (md->user_procs_left == 0) {
+                csema_post(&md->uprocs_comp);
+            }
+        }
         pthread_mutex_unlock(&md->qmut);
         csema_post(&md->qempty);
 
@@ -106,14 +116,59 @@ void user(int tn, int seed) {
         }
     }
     printf("USER PROC %u IS FINISHED\n", tn);
-    pthread_mutex_lock(&md->qmut);
-    md->user_procs_left--;
-    if (md->user_procs_left == 0) {
-        csema_post(&md->uprocs_comp);
+    exit(0);
+}
+
+
+void user_fcfs(int tn, int seed) {
+    srand(seed);
+    signal(SIGINT, sigint_handler);
+    int shm_fd = shmget(SHM_KEY, DEFAULT_SHM_SIZE, IPC_CREAT | 0777);
+    int pqueue_fd = shmget(PQUEUE_SIZE, DEFAULT_PQUEUE_SIZE, IPC_CREAT | 0777);
+    shm_mdata *md = shmat(shm_fd, NULL, 0);
+    job *pqueue = shmat(pqueue_fd, NULL, 0);
+
+    int num_jobs = rand() % 30 + 1;
+    printf("User %d is creating %d jobs\n", tn, num_jobs);
+    int i;
+    for (i = 0; i < num_jobs; i++) {
+        usleep(rand() % 900000 + 100000);
+
+        csema_wait(&md->qfull);
+        pthread_mutex_lock(&md->qmut);
+        int bytes = rand() % 900 + 100;
+        unsigned int noff = get_next_free_off(md->free_space);
+        job *njob = &pqueue[noff];
+        init_fcfs_job(njob, bytes, noff);
+
+        clock_gettime(CLOCK_BOOTTIME, &njob->start_wait_time);
+        njob->thd = tn;
+        njob->off = noff;
+        if (md->head >= 0) {
+            add_job_fcfs(&pqueue[md->head], njob);
+        } else {
+            md->head = njob->off;
+        }
+
+        md->free_space = set_off_not_free(md->free_space, noff);
+        if (i == num_jobs - 1 || sigint_tripped) {
+            md->user_procs_left--;
+            if (md->user_procs_left == 0) {
+                csema_post(&md->uprocs_comp);
+            }
+        }
+        pthread_mutex_unlock(&md->qmut);
+        csema_post(&md->qempty);
+
+        printf("User %d created job of %d bytes\n", tn, bytes);
+        if (sigint_tripped == 1) {
+
+            printf("USER %d received SIGINT. Stopping execution at %d jobs\n",
+                   tn, i + 1);
+            break;
+        }
     }
-    free(ptds);
-    free(uprocs);
-    pthread_mutex_unlock(&md->qmut);
+    printf("USER PROC %u IS FINISHED\n", tn);
     exit(0);
 }
 
@@ -129,16 +184,13 @@ void *print(void *thread_n) {
     job *compl_job; // Store completed job
 
     while (1) {
-
         csema_wait(&md->qempty);
         /*if (!(mdata->user_procs_left > 0 || mdata->qhead != NULL))
             break;*/
         pthread_mutex_lock(&md->qmut);
-        if (md->head == -1 && md->user_procs_left == 0) {
-            csema_post(&md->pprocs_comp);
-        }
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
         compl_job = &pqueue[md->head];
 
         long wait = compl_job->bytes * 5 * 1000;
@@ -146,6 +198,8 @@ void *print(void *thread_n) {
         unsigned int thd = compl_job->thd;
         unsigned int off = compl_job->off;
         md->head = rm_job(compl_job);
+        struct timespec start;
+        memcpy(&start, &compl_job->start_wait_time, sizeof(struct timespec));
         mdata->free_space = set_off_free(mdata->free_space, off);
         if (md->head == -1 && md->user_procs_left == 0) {
             csema_post(&md->pprocs_comp);
@@ -154,24 +208,40 @@ void *print(void *thread_n) {
 
         csema_post(&md->qfull);
         usleep(wait);
-        clock_t cur_time;
-        cur_time = clock();
-        printf("Printer %d printed job of %d bytes created by user %d\n", tn,
-               bytes, thd);
 
+        pthread_mutex_lock(&time_info);
+        struct timespec end;
+        clock_gettime(CLOCK_BOOTTIME, &end);
+        uint64_t diff = 1000 * 1000 * 1000 * (end.tv_sec - start.tv_sec) +
+                        end.tv_nsec - start.tv_nsec;
+
+        avg_exec_time = (avg_exec_time * jobs_done + diff) / (jobs_done + 1);
+        jobs_done++;
+        printf("Printer %d printed job of %d bytes created by user %d, with a "
+               "wait time of %lf\n",
+               tn, bytes, thd, diff / BILLION);
+
+        pthread_mutex_unlock(&time_info);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
 }
 
 int main(int argc, char **argv) {
+
+    struct timespec start;
+    clock_gettime(CLOCK_BOOTTIME, &start);
     signal(SIGINT, main_sigint_handler);
+    unsigned int use_fcfs = 0; // Change to 1 if --fcfs cmd line argument is there
     int user_procs, print_procs;
     if (argc < 3) {
-        user_procs = DEFAULT_UPROCS;
-        print_procs = DEFAULT_PPROCS;
+        printf("Usage: ./a3 [users] [printers]\nExample: ./a3 2 10\n");
+        exit(0);
     } else {
         user_procs = (int)strtol(argv[1], (char **)NULL, 10);
         print_procs = (int)strtol(argv[2], (char **)NULL, 10);
+        if(argc == 4){
+            use_fcfs = 1; 
+        }
     }
     num_uprocs = user_procs;
     size_t tot_size = 0;
@@ -180,6 +250,9 @@ int main(int argc, char **argv) {
     mdata = shmat(shm_fd, NULL, 0);
     pq = shmat(pqueue_fd, NULL, 0);
     mdata->user_procs_left = user_procs;
+    avg_exec_time = 0;
+    pthread_mutex_init(&time_info, NULL);
+    jobs_done = 0;
     csema_init(&mdata->qempty, 0);
     csema_init(&mdata->qfull, PRINT_QUEUE_LIMIT);
     csema_init(&mdata->uprocs_comp, 0);
@@ -202,7 +275,14 @@ int main(int argc, char **argv) {
             pid = fork();
             int seed = rand();
             if (pid == 0) {
-                user(i, seed);
+                free(uprocs);
+                free(ptds);
+                if(use_fcfs == 0)
+                    user(i, seed);
+                else{
+                    printf("USING FCFS\n");
+                    user_fcfs(i, seed);
+                }
                 exit(0);
             } else {
                 uprocs[i] = pid;
@@ -217,10 +297,15 @@ int main(int argc, char **argv) {
     }
 
     csema_wait(&mdata->uprocs_comp);
+    for (i = 0; i < user_procs; i++) {
+        int status;
+        waitpid(uprocs[i], &status, 0);
+    }
     // printf("UPROCS DONE\n");
     csema_wait(&mdata->pprocs_comp);
     /* *
-     * Send cancel command to each thread before joining, so one thread that takes a long time doesn't block the other ones
+     * Send cancel command to each thread before joining, so one thread that
+     * takes a long time doesn't block the other ones
      * */
     for (i = 0; i < print_procs; i++) {
         pthread_cancel(ptds[i]);
@@ -231,6 +316,8 @@ int main(int argc, char **argv) {
     for (i = 0; i < print_procs; i++) {
         pthread_join(ptds[i], NULL);
     }
+
+    printf("Average wait time for jobs was: %lf\n", avg_exec_time / BILLION);
     pthread_mutex_destroy(&mdata->qmut);
     csema_destroy(&mdata->qempty);
     csema_destroy(&mdata->qfull);
@@ -243,4 +330,10 @@ int main(int argc, char **argv) {
         perror("shmctl");
     free(uprocs);
     free(ptds);
+    struct timespec end;
+    clock_gettime(CLOCK_BOOTTIME, &end);
+    uint64_t diff = 1000 * 1000 * 1000 * (end.tv_sec - start.tv_sec) +
+                    end.tv_nsec - start.tv_nsec;
+    printf("Total execution time in seconds: %lf\n",
+           (long long unsigned int)diff / (double)(1000 * 1000 * 1000));
 }
