@@ -8,7 +8,7 @@ typedef struct print_job {
     unsigned int thd,
         bytes, // Thread that assigned the job, and the bytes allocated
         f;     // 0 if slot is not free, 1 if slot is free
-    clock_t start_wait_time; // Total time job has been waiting
+    struct timespec start_wait_time; // Total time job has been waiting
 
     struct print_job *(*add_job)(struct print_job *, struct print_job *);
     struct print_job *(*rm_job)(struct print_job *);

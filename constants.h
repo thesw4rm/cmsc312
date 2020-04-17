@@ -15,6 +15,7 @@
 #define DEFAULT_PQUEUE_SIZE sizeof(job) * 30
 
 #define QUEUE_OFFSET sizeof(shm_mdata)
+#define BILLION (double)(1000 * 1000 * 1000)
 // Printer format: 1, printer_id, user_id, bytes, start_time, wait_time
 // User format: 0, -1, user_id, bytes, start_time, 0
 

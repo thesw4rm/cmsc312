@@ -234,7 +234,7 @@ void *print(void *thread_n) {
     7. Unlock Mutex
     8. Inform that printer queue is not full
     9. Seconds waited = number of bytes / 200
-    10. Record total running time for later log collection
+    10. Record total wait time for later log collection
     11. Allow cancellation because job is complete
 
 ## Main Method

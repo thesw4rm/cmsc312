@@ -1,4 +1,5 @@
 #include "constants.h"
+#include <string.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
@@ -6,12 +7,18 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/shm.h>
-#include <unistd.h>
+#include <sys/time.h>
 #include <sys/wait.h>
-
+#include <time.h>
+#include <unistd.h>
 
 shm_mdata *mdata;
 job *pq;
+
+double
+    avg_exec_time; // Average execution time so far. Used in running calculation
+int jobs_done;     // Total jobs printed so far
+pthread_mutex_t time_info; // Mutex to lock average wait time information
 
 volatile int sigint_tripped; // Becomes 1 if signal interrupt is received.
 pid_t *uprocs;
@@ -21,7 +28,7 @@ void main_sigint_handler(int sig_num) {
     for (int i = 0; i < num_uprocs; i++) {
         kill(uprocs[i], SIGINT);
     }
-    for(int i = 0; i < num_uprocs; i++){
+    for (int i = 0; i < num_uprocs; i++) {
 
         int status;
         waitpid(uprocs[i], &status, 0);
@@ -67,7 +74,7 @@ unsigned int set_off_free(unsigned int free_space, unsigned int off) {
 void user(int tn, int seed) { //(void *thread_n) {
     signal(SIGINT, sigint_handler);
     srand(seed);
-    
+
     int num_jobs = rand() % 30 + 1;
     printf("User %d is creating %d jobs\n", tn, num_jobs);
     int i;
@@ -95,7 +102,7 @@ void user(int tn, int seed) { //(void *thread_n) {
         njob->f = 0; // Set as not free
         init_fcfs_job(njob, bytes, noff);
 
-        njob->start_wait_time = clock();
+        clock_gettime(CLOCK_BOOTTIME, &njob->start_wait_time);
         njob->thd = tn;
         sem_wait(&mdata->qmut);
         if (mdata->head != NULL) {
@@ -103,23 +110,24 @@ void user(int tn, int seed) { //(void *thread_n) {
         } else {
             mdata->head = njob;
         }
+        if (i == num_jobs - 1 || sigint_tripped) {
+            mdata->user_procs_left--;
+            if (mdata->user_procs_left == 0) {
+                csema_post(&mdata->uprocs_comp);
+            }
+        }
         sem_post(&mdata->qmut);
 
         sem_post(&mdata->pqmut[noff]); // Unlock the slot for use by printer
         csema_post(&mdata->qempty);
         printf("User %d created job of %d bytes\n", tn, bytes);
-        if(sigint_tripped == 1){
-            printf("User %d caught SIGINT after completing %d jobs\n", tn, i+1);
+        if (sigint_tripped == 1) {
+            printf("User %d caught SIGINT after completing %d jobs\n", tn,
+                   i + 1);
             break;
         }
     }
     printf("USER PROC %u IS FINISHED\n", tn);
-    sem_wait(&mdata->qmut);
-    mdata->user_procs_left--;
-    if (mdata->user_procs_left == 0) {
-        csema_post(&mdata->uprocs_comp);
-    }
-    sem_post(&mdata->qmut);
     exit(0);
 }
 
@@ -148,6 +156,8 @@ void *print(void *thread_n) {
         long wait = compl_job->bytes * 5 * 1000;
         unsigned int bytes = compl_job->bytes;
         unsigned int thd = compl_job->thd;
+        struct timespec start;
+        memcpy(&start, &compl_job->start_wait_time, sizeof(struct timespec));
         mdata->head = rm_job(compl_job);
         compl_job->f = 1; // Set job as free because we are printing it
         if (mdata->head == NULL && mdata->user_procs_left == 0) {
@@ -157,10 +167,20 @@ void *print(void *thread_n) {
 
         csema_post(&mdata->qfull);
         usleep(wait);
-        clock_t cur_time;
-        cur_time = clock();
-        printf("Printer %d printed job of %d bytes created by user %d\n", tn,
-               bytes, thd);
+
+        pthread_mutex_lock(&time_info);
+        struct timespec end;
+        clock_gettime(CLOCK_BOOTTIME, &end);
+        uint64_t diff = 1000 * 1000 * 1000 * (end.tv_sec - start.tv_sec) +
+                        end.tv_nsec - start.tv_nsec;
+
+        avg_exec_time = (avg_exec_time * jobs_done + diff) / (jobs_done + 1);
+        jobs_done++;
+
+        pthread_mutex_unlock(&time_info);
+        printf("Printer %d printed job of %d bytes created by user %d, with a "
+               "wait time of %lf\n",
+               tn, bytes, thd, diff / BILLION);
 
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
@@ -168,6 +188,8 @@ void *print(void *thread_n) {
 
 int main(int argc, char **argv) {
     signal(SIGINT, main_sigint_handler);
+    struct timespec start;
+    clock_gettime(CLOCK_BOOTTIME, &start);
     int user_procs, print_procs;
     if (argc < 3) {
         user_procs = DEFAULT_UPROCS;
@@ -214,8 +236,7 @@ int main(int argc, char **argv) {
                 free(ptds);
                 user(i, seed);
                 exit(0);
-            }
-            else {
+            } else {
                 uprocs[i] = pid;
             }
         }
@@ -249,4 +270,12 @@ int main(int argc, char **argv) {
     munmap(pq, DEFAULT_PQUEUE_SIZE);
     free(uprocs);
     free(ptds);
+
+    struct timespec end;
+    clock_gettime(CLOCK_BOOTTIME, &end);
+    uint64_t diff = 1000 * 1000 * 1000 * (end.tv_sec - start.tv_sec) +
+                    end.tv_nsec - start.tv_nsec;
+    printf("Average execution time in seconds: %lf\n", avg_exec_time / BILLION);
+    printf("Total Execution time in seconds: %lf\n",
+           (long long unsigned int)diff / (double)(1000 * 1000 * 1000));
 }
