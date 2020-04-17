@@ -4,3 +4,4 @@ cmake-build-debug/
 .lvimrc
 tags
 session.vim
+upload_script.sh
